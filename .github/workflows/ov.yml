@@ -28,7 +28,18 @@ jobs:
             ONEDNN_SHA="${HEAD_SHA}"
           fi
 
+          echo "sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
           echo "onednn_sha=${ONEDNN_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Set pending status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.sha }}" \
+            -X POST \
+            -f state=pending \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f context="Jenkins / dev_trigger_onednn"
 
       - name: Parse comment
         id: parse
@@ -137,3 +148,25 @@ jobs:
           if [[ "$HTTP_CODE" -lt 200 || "$HTTP_CODE" -ge 300 ]]; then
             exit 1
           fi
+
+      - name: Set success status
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.sha }}" \
+            -X POST \
+            -f state=success \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f context="Jenkins / dev_trigger_onednn"
+
+      - name: Set failure status
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.sha }}" \
+            -X POST \
+            -f state=failure \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f context="Jenkins / dev_trigger_onednn"
